@@ -1,23 +1,32 @@
 from fastapi import FastAPI, UploadFile, File
 from torchvision import models, transforms
+from contextlib import asynccontextmanager
 from PIL import Image
 import torch
 import io
 
 app = FastAPI()
 
-# Load ResNet50 without final classification layer
-model = models.resnet50(weights='IMAGENET1K_V1')
-model.fc = torch.nn.Identity()  # 👈 Remove classification head
-model.eval()
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
+
+model = None
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global model
+    print("Loading EfficientNetB0 model...")
+    model = models.resnet50(weights='IMAGENET1K_V1')
+    model.fc = torch.nn.Identity()
+    model.to(device)
+    model.eval()
+    print("Model loaded.")
+    yield
+    print("Shutting down...")
 
 @app.get("/")
 def root():
