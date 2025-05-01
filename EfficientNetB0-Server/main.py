@@ -16,22 +16,31 @@ transform = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    global model
-    print("Loading EfficientNetB0 model...")
-    model = models.efficientnet_b0(weights='IMAGENET1K_V1')
-    model.fc = torch.nn.Identity()
-    model.to(device)
-    model.eval()
-    print("Model loaded.")
-    yield
-    print("Shutting down...")
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     global model
+#     print("Loading EfficientNetB0 model...")
+#     model = models.efficientnet_b0(weights='IMAGENET1K_V1')
+#     model.fc = torch.nn.Identity()
+#     model.to(device)
+#     model.eval()
+#     print("Model loaded.")
+#     yield
+#     print("Shutting down...")
 
-app = FastAPI(lifespan=lifespan)
+# app = FastAPI(lifespan=lifespan)
 
 @app.post("/embed")
 async def get_image_embedding(image: UploadFile = File(...)):
+    global model
+
+    if model is None:
+        print("Loading model...")
+        model = models.efficientnet_b0(weights="IMAGENET1K_V1")
+        model.fc = torch.nn.Identity()
+        model = model.to(device)
+        model.eval()
+
     try:
         # Read the file content
         image_bytes = await image.read()

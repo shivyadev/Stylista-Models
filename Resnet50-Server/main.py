@@ -16,17 +16,17 @@ transform = transforms.Compose([
 model = None
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    global model
-    print("Loading EfficientNetB0 model...")
-    model = models.resnet50(weights='IMAGENET1K_V1')
-    model.fc = torch.nn.Identity()
-    model.to(device)
-    model.eval()
-    print("Model loaded.")
-    yield
-    print("Shutting down...")
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     global model
+#     print("Loading EfficientNetB0 model...")
+#     model = models.resnet50(weights='IMAGENET1K_V1')
+#     model.fc = torch.nn.Identity()
+#     model.to(device)
+#     model.eval()
+#     print("Model loaded.")
+#     yield
+#     print("Shutting down...")
 
 @app.get("/")
 def root():
@@ -35,6 +35,15 @@ def root():
 
 @app.post("/embed")
 async def get_image_embedding(image: UploadFile = File(...)):
+    global model
+
+    if model is None:
+        print("Loading model...")
+        model = models.resnet50(weights='IMAGENET1K_V1')
+        model.fc = torch.nn.Identity()
+        model = model.to(device)
+        model.eval()
+    
     try:
         # Read the file content
         image_bytes = await image.read()
